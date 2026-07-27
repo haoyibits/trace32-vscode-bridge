@@ -1,0 +1,27 @@
+{
+    // "type": "node" plus "debugServer" is the standard VS Code way to talk to a
+    // standalone DAP server; t32debugadapter is started by the preLaunchTask.
+    // "debugServer" must match T32_DAP_PORT and "trace32Port" must match
+    // T32_RCL_PORT in trace32_auto/config.env.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "1. Flash + Debug",
+            "type": "node",
+            "request": "attach",
+            "debugServer": 58870,
+            "trace32Node": "localhost",
+            "trace32Port": 20000,
+            "preLaunchTask": "T32: Flash + Debug"
+        },
+        {
+            "name": "2. Load + Debug",
+            "type": "node",
+            "request": "attach",
+            "debugServer": 58870,
+            "trace32Node": "localhost",
+            "trace32Port": 20000,
+            "preLaunchTask": "T32: Load + Debug"
+        }
+    ]
+}

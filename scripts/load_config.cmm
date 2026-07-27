@@ -1,0 +1,40 @@
+; ------------------------------------------------------------------------------
+; Load the PRACTICE view of config.env.
+;
+; scripts/t32.sh translates config.env into .run/config.cmm, which declares the
+; GLOBAL &CFG_* macros used by every other script here. Doing the translation in
+; bash keeps quoting rules in one place instead of duplicating a parser in
+; PRACTICE, whose macro expansion is textual and would break on quoted values.
+;
+; Usage:
+;   DO load_config.cmm [<toolkit-root>]
+;
+; The root is looked up in three ways so the scripts also work when PowerView
+; was started by hand: the argument, then $T32AUTO_DIR, then "~~~~" (the
+; directory of the currently executed script).
+; ------------------------------------------------------------------------------
+
+PRIVATE &root
+ENTRY %LINE &root
+&root=STRing.TRIM("&root")
+
+IF "&root"==""
+  &root=OS.ENV(T32AUTO_DIR)
+
+IF "&root"!=""
+(
+  IF OS.FILE("&root/.run/config.cmm")
+  (
+    DO "&root/.run/config.cmm"
+    ENDDO
+  )
+)
+
+IF OS.FILE("~~~~/../.run/config.cmm")
+(
+  DO "~~~~/../.run/config.cmm"
+  ENDDO
+)
+
+PRINT %ERROR "trace32_auto: .run/config.cmm missing. Run a VS Code T32 task once to generate it."
+ENDDO

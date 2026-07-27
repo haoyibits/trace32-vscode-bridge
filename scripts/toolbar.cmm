@@ -1,0 +1,18 @@
+; ------------------------------------------------------------------------------
+; Two extra toolbar buttons, mirroring the VS Code tasks so the same flows are
+; reachable from PowerView itself. The stock TRACE32 menu and toolbar are left
+; untouched.
+; ------------------------------------------------------------------------------
+
+MENU.ReProgram
+(
+  ADD
+  TOOLBAR
+  (
+    SEPARATOR
+    TOOLITEM "Flash + Debug" "FL" "DO &CFG_ROOT/scripts/target.cmm ACTION=flash ROOT=&CFG_ROOT"
+    TOOLITEM "Load + Debug"  "LD" "DO &CFG_ROOT/scripts/target.cmm ACTION=load ROOT=&CFG_ROOT"
+  )
+)
+
+ENDDO
