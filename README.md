@@ -30,20 +30,30 @@ project is Rust, C or anything else — it consumes a finished ELF. See
 trace32-vscode-bridge/
 ├── config.env                 ← the only file you edit per project
 ├── install.sh                 ← copies vscode/ templates into the project's .vscode/
+├── install/
+│   └── merge_vscode_json.js   ← install-time only; not used while debugging
 ├── vscode/
 │   ├── tasks.json
 │   └── launch.json
 └── scripts/
     ├── t32.sh                 ← single entry point, called by the VS Code tasks
-    ├── startup.cmm            ← PowerView startup script
-    ├── load_config.cmm        ← loads the generated .run/config.cmm
-    ├── target.cmm             ← the flash and load actions
-    ├── t32_dap_proxy.js       ← DAP compatibility proxy (Pause / Reset fixes)
-    ├── reset_stop.cmm         ← reset-and-stop helper; DAP then continues
-    ├── toolbar.cmm            ← two PowerView toolbar buttons
-    ├── flash/                 ← local flash scripts (usually empty)
-    └── rtt_viewer.py          ← RTT terminal
+    ├── cmm/                   ← runs inside PowerView (PRACTICE)
+    │   ├── startup.cmm        ← PowerView startup script
+    │   ├── load_config.cmm    ← loads the generated .run/config.cmm
+    │   ├── target.cmm         ← the flash and load actions
+    │   ├── toolbar.cmm        ← two PowerView toolbar buttons
+    │   └── reset_stop.cmm     ← reset-and-stop helper; DAP then continues
+    └── host/                  ← host processes, talking to PowerView over a socket
+        ├── rtt_viewer.py      ← RTT terminal (RCL)
+        └── dap_proxy.js       ← DAP compatibility proxy (Pause / Reset fixes)
 ```
+
+The split is by **where the code executes**, not by language: everything under
+`cmm/` runs inside PowerView's PRACTICE interpreter and cannot be run or tested
+from the host, while `host/` holds ordinary local processes that reach PowerView
+through a socket. `t32.sh` is the only entry point and stays at the top. A
+patched vendor flash script, on the rare occasion you need one, goes into
+`cmm/` alongside the rest.
 
 `.run/` is generated (PowerView log, handshake stamps, and the `config.cmm`
 translated from `config.env`) and is git-ignored.
@@ -199,10 +209,13 @@ value above.
 - A device whose shipped script has **no `PREPAREONLY`**, or which needs a
   local patch — a missing watchdog-disable that lets the chip reset itself
   mid-erase, a different RAM window for the flash algorithm, an erratum
-  workaround. Copy the vendor script into `scripts/flash/`, patch it, make sure
-  it ends with `IF &param_prepareonly / ENDDO PREPAREDONE` after the
-  declaration, and point `T32_FLASH_SCRIPT` at your copy. Details in
-  [scripts/flash/README.md](scripts/flash/README.md).
+  workaround. Copy the vendor script into `scripts/cmm/` and patch it there,
+  then point `T32_FLASH_SCRIPT` at your copy — paths that do not start with
+  `~~` are resolved relative to the toolkit directory, so
+  `T32_FLASH_SCRIPT="scripts/cmm/stm32f4xx.cmm"`. The copy has to keep the
+  contract `target.cmm` relies on: accept a `PREPAREONLY` argument, end with
+  `IF &param_prepareonly / ENDDO PREPAREDONE` after the flash declaration, and
+  leave the reset alone — `target.cmm` owns the `SYStem.Down` / `SYStem.Up`.
 - **RTT** needs a SEGGER RTT implementation compiled into the firmware and an
   architecture that supports run-time memory access. Without both, use the
   flash and load flows and skip the RTT task.

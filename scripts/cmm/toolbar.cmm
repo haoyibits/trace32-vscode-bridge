@@ -10,8 +10,8 @@ MENU.ReProgram
   TOOLBAR
   (
     SEPARATOR
-    TOOLITEM "Flash"    "FL" "DO &CFG_ROOT/scripts/target.cmm ACTION=flash ROOT=&CFG_ROOT"
-    TOOLITEM "Load ELF" "LD" "DO &CFG_ROOT/scripts/target.cmm ACTION=load ROOT=&CFG_ROOT"
+    TOOLITEM "Flash"    ":FLASH" "DO &CFG_ROOT/scripts/cmm/target.cmm ACTION=flash ROOT=&CFG_ROOT"
+    TOOLITEM "Load ELF" ":LOAD"  "DO &CFG_ROOT/scripts/cmm/target.cmm ACTION=load ROOT=&CFG_ROOT"
   )
 )
 

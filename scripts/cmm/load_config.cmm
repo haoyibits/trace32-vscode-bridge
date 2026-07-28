@@ -30,9 +30,9 @@ IF "&root"!=""
   )
 )
 
-IF OS.FILE("~~~~/../.run/config.cmm")
+IF OS.FILE("~~~~/../../.run/config.cmm")
 (
-  DO "~~~~/../.run/config.cmm"
+  DO "~~~~/../../.run/config.cmm"
   ENDDO
 )
 

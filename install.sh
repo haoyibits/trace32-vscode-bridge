@@ -37,7 +37,7 @@ for spec in "tasks:tasks.json" "launch:launch.json"; do
         cp "$target" "$backup"
         echo "backed up $target -> $backup"
     fi
-    "$NODE_BIN" "$TOOLKIT_DIR/scripts/merge_vscode_json.js" \
+    "$NODE_BIN" "$TOOLKIT_DIR/install/merge_vscode_json.js" \
         "$kind" "$TOOLKIT_DIR/vscode/$name" "$target" "$TOOLKIT_REL" \
         "$T32_DAP_PORT" "$T32_RCL_PORT"
     echo "installed/merged $target"

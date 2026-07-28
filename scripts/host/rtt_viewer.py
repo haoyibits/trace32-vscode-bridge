@@ -24,7 +24,10 @@ import time
 import lauterbach.trace32.rcl as rcl
 
 
-TOOLKIT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# scripts/host/rtt_viewer.py -> the toolkit root is three levels up.
+TOOLKIT_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 CONFIG_FILE = os.path.join(TOOLKIT_DIR, "config.env")
 
 ID_STRING = b"SEGGER RTT"

@@ -21,9 +21,9 @@ IF "&root"==""
   ENDDO
 )
 
-DO "&root/scripts/load_config.cmm" &root
+DO "&root/scripts/cmm/load_config.cmm" &root
 
-DO "&CFG_ROOT/scripts/toolbar.cmm"
+DO "&CFG_ROOT/scripts/cmm/toolbar.cmm"
 
 PRINT "trace32-vscode-bridge ready (&CFG_PROGRAM)"
 

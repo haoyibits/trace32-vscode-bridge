@@ -3,7 +3,6 @@
 "use strict";
 
 const net = require("net");
-const path = require("path");
 const { spawn } = require("child_process");
 
 const host = "127.0.0.1";
@@ -24,8 +23,10 @@ const backendTimeoutMs =
 const rclPort = Number(process.env.T32_RCL_PORT || "20000");
 const adapter = requiredEnv("T32_DEBUG_ADAPTER");
 const t32rem = requiredEnv("T32_REM");
-const resetScript =
-    process.env.T32_RESET_SCRIPT || path.join(__dirname, "reset_stop.cmm");
+// Required rather than derived from __dirname: the CMM scripts live in
+// scripts/cmm/ and this proxy in scripts/host/, so a relative guess from here
+// would fail silently at Reset time instead of at startup. t32.sh always sets it.
+const resetScript = requiredEnv("T32_RESET_SCRIPT");
 
 let proxySequence = 1000000;
 let activeClient = null;

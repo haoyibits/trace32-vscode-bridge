@@ -27,20 +27,28 @@ ELF。要在烧写前重新构建，见[串上你的构建](#串上你的构建)
 trace32-vscode-bridge/
 ├── config.env                 ← 换工程时唯一要改的文件
 ├── install.sh                 ← 把 vscode/ 模板装进工程的 .vscode/
+├── install/
+│   └── merge_vscode_json.js   ← 只在安装时用，调试时不涉及
 ├── vscode/
 │   ├── tasks.json
 │   └── launch.json
 └── scripts/
     ├── t32.sh                 ← 唯一入口，被 VS Code task 调用
-    ├── startup.cmm            ← PowerView 启动脚本
-    ├── load_config.cmm        ← 加载生成的 .run/config.cmm
-    ├── target.cmm             ← flash / load 两个动作
-    ├── t32_dap_proxy.js       ← DAP 兼容代理（Pause / Reset workaround）
-    ├── reset_stop.cmm         ← Reset 后保持停止，由 DAP Continue
-    ├── toolbar.cmm            ← PowerView 上的两个按钮
-    ├── flash/                 ← 本地 flash 脚本（通常是空的）
-    └── rtt_viewer.py          ← RTT 终端
+    ├── cmm/                   ← 在 PowerView 里执行（PRACTICE）
+    │   ├── startup.cmm        ← PowerView 启动脚本
+    │   ├── load_config.cmm    ← 加载生成的 .run/config.cmm
+    │   ├── target.cmm         ← flash / load 两个动作
+    │   ├── toolbar.cmm        ← PowerView 上的两个按钮
+    │   └── reset_stop.cmm     ← Reset 后保持停止，由 DAP Continue
+    └── host/                  ← 主机进程，通过 socket 跟 PowerView 通信
+        ├── rtt_viewer.py      ← RTT 终端（RCL）
+        └── dap_proxy.js       ← DAP 兼容代理（Pause / Reset workaround）
 ```
+
+分组依据是**代码在哪个进程里执行**，不是语言：`cmm/` 下的东西都在 PowerView 的
+PRACTICE 解释器里跑，没法在主机上运行或测试；`host/` 则是普通的本地进程，通过
+socket 连到 PowerView。`t32.sh` 是唯一入口，留在顶层。少数情况下需要打补丁的
+厂商 flash 脚本，直接和其它 CMM 一起放进 `cmm/`。
 
 `.run/` 是生成目录（PowerView 日志、握手标记、由 `config.env` 生成的
 `config.cmm`），已被 `.gitignore` 忽略。
@@ -188,10 +196,12 @@ T32_FLASH_ARGS="CPU=TC387QP DUALPORT=1"
 
 - 自带脚本**不支持 `PREPAREONLY`**、或者需要打补丁的芯片 —— 比如少了关看门狗
   这一步导致擦除中途芯片自己复位、flash 算法需要换一块 RAM 窗口、要绕某条
-  勘误。做法是把厂商脚本拷进 `scripts/flash/` 打上补丁，确保声明结束后有
-  `IF &param_prepareonly / ENDDO PREPAREDONE`，然后让 `T32_FLASH_SCRIPT`
-  指向你这份拷贝。细节见
-  [scripts/flash/README.md](scripts/flash/README.md)。
+  勘误。做法是把厂商脚本拷进 `scripts/cmm/` 就地打补丁，然后让
+  `T32_FLASH_SCRIPT` 指向这份拷贝 —— 不以 `~~` 开头的路径都相对工具箱目录解析，
+  所以写 `T32_FLASH_SCRIPT="scripts/cmm/stm32f4xx.cmm"` 即可。拷贝必须保持
+  `target.cmm` 依赖的约定：接受 `PREPAREONLY` 参数、在 flash 声明之后以
+  `IF &param_prepareonly / ENDDO PREPAREDONE` 结束、并且不要自己复位 ——
+  `SYStem.Down` / `SYStem.Up` 由 `target.cmm` 负责。
 - **RTT** 需要固件里编进 SEGGER RTT，以及架构支持运行时内存访问。两者缺一，
   就只用 flash 和 load 两条流程，跳过 RTT task。
 

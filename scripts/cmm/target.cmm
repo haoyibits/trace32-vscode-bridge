@@ -2,9 +2,9 @@
 ; Flash and/or attach the configured image.
 ;
 ; Usage:
-;   DO scripts/target.cmm ACTION=flash [ROOT=<toolkit-root>]
+;   DO scripts/cmm/target.cmm ACTION=flash [ROOT=<toolkit-root>]
 ;       erase + program + symbols + run
-;   DO scripts/target.cmm ACTION=load  [ROOT=<toolkit-root>]
+;   DO scripts/cmm/target.cmm ACTION=load  [ROOT=<toolkit-root>]
 ;       symbols only, target keeps running
 ;
 ; Everything else comes from config.env through .run/config.cmm.
@@ -20,7 +20,7 @@ ENTRY %LINE &parameters
 &root=STRing.SCANAndExtract("&parameters","ROOT=","")
 
 IF "&root"!=""
-  DO "&root/scripts/load_config.cmm" &root
+  DO "&root/scripts/cmm/load_config.cmm" &root
 ELSE
   DO "~~~~/load_config.cmm"
 

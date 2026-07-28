@@ -180,7 +180,7 @@ start_powerview() {
         cd "$PROJECT_DIR"
         T32AUTO_DIR="$TOOLKIT_DIR" nohup "$T32_BIN" \
             -c "$T32_CONFIG" \
-            -s "$TOOLKIT_DIR/scripts/startup.cmm" "$TOOLKIT_DIR" \
+            -s "$TOOLKIT_DIR/scripts/cmm/startup.cmm" "$TOOLKIT_DIR" \
             >"$RUN_DIR/powerview.log" 2>&1 &
         disown
     )
@@ -241,8 +241,8 @@ start_adapter() {
     T32_DAP_PORT="$T32_DAP_PORT" \
     T32_DAP_BACKEND_PORT="$T32_DAP_BACKEND_PORT" \
     T32_DAP_BACKEND_TIMEOUT="$T32_DAP_BACKEND_TIMEOUT" \
-    T32_RESET_SCRIPT="$TOOLKIT_DIR/scripts/reset_stop.cmm" \
-        exec "$T32_NODE" "$TOOLKIT_DIR/scripts/t32_dap_proxy.js"
+    T32_RESET_SCRIPT="$TOOLKIT_DIR/scripts/cmm/reset_stop.cmm" \
+        exec "$T32_NODE" "$TOOLKIT_DIR/scripts/host/dap_proxy.js"
 }
 
 # ------------------------------------------------------------------------------
@@ -257,7 +257,7 @@ case "${1:-flash}" in
         write_cmm_config
         start_powerview
         info "flashing $ELF_PATH"
-        t32_do "$TOOLKIT_DIR/scripts/target.cmm" ACTION=flash "ROOT=$TOOLKIT_DIR"
+        t32_do "$TOOLKIT_DIR/scripts/cmm/target.cmm" ACTION=flash "ROOT=$TOOLKIT_DIR"
         info "flashed, symbols loaded, target running"
         ;;
 
@@ -267,14 +267,14 @@ case "${1:-flash}" in
         write_cmm_config
         start_powerview
         info "loading symbols from $ELF_PATH"
-        t32_do "$TOOLKIT_DIR/scripts/target.cmm" ACTION=load "ROOT=$TOOLKIT_DIR"
+        t32_do "$TOOLKIT_DIR/scripts/cmm/target.cmm" ACTION=load "ROOT=$TOOLKIT_DIR"
         info "symbols loaded, target running"
         ;;
 
     rtt)
         port_open "$T32_RCL_PORT" \
             || die "no PowerView on RCL port $T32_RCL_PORT - run the flash or load task first"
-        exec python3 "$TOOLKIT_DIR/scripts/rtt_viewer.py" "${@:2}"
+        exec python3 "$TOOLKIT_DIR/scripts/host/rtt_viewer.py" "${@:2}"
         ;;
 
     open)
