@@ -3,16 +3,16 @@
     // standalone DAP server. The hidden preLaunchTask starts the adapter;
     // Flash, Load ELF and RTT remain independent visible tasks.
     // "debugServer" must match T32_DAP_PORT and "trace32Port" must match
-    // T32_RCL_PORT in trace32_auto/config.env.
+    // T32_RCL_PORT in the toolkit's config.env.
     "version": "0.2.0",
     "configurations": [
         {
             "name": "TRACE32: Attach",
             "type": "node",
             "request": "attach",
-            "debugServer": 58870,
+            "debugServer": "__T32_DAP_PORT__",
             "trace32Node": "localhost",
-            "trace32Port": 20000,
+            "trace32Port": "__T32_RCL_PORT__",
             "preLaunchTask": "T32: Start Debug Adapter"
         }
     ]

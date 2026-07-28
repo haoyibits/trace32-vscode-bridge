@@ -17,6 +17,9 @@ esac
 
 TARGET_DIR="$PROJECT_DIR/.vscode"
 NODE_BIN="${T32_NODE:-node}"
+TOOLKIT_REL="$("$NODE_BIN" -e \
+    'const path=require("path"); process.stdout.write(path.relative(process.argv[1],process.argv[2]).split(path.sep).join("/")||".")' \
+    "$PROJECT_DIR" "$TOOLKIT_DIR")"
 
 mkdir -p "$TARGET_DIR"
 
@@ -33,13 +36,11 @@ for spec in "tasks:tasks.json" "launch:launch.json"; do
         done
         cp "$target" "$backup"
         echo "backed up $target -> $backup"
-        "$NODE_BIN" "$TOOLKIT_DIR/scripts/merge_vscode_json.js" \
-            "$kind" "$TOOLKIT_DIR/vscode/$name" "$target"
-        echo "merged $target"
-    else
-        cp "$TOOLKIT_DIR/vscode/$name" "$target"
-        echo "installed $target"
     fi
+    "$NODE_BIN" "$TOOLKIT_DIR/scripts/merge_vscode_json.js" \
+        "$kind" "$TOOLKIT_DIR/vscode/$name" "$target" "$TOOLKIT_REL" \
+        "$T32_DAP_PORT" "$T32_RCL_PORT"
+    echo "installed/merged $target"
 done
 
 echo

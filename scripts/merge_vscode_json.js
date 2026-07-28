@@ -109,6 +109,31 @@ function readJsonc(filename) {
     }
 }
 
+function replaceTemplateTokens(value, replacements) {
+    if (Array.isArray(value)) {
+        return value.map((item) => replaceTemplateTokens(item, replacements));
+    }
+    if (value && typeof value === "object") {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, item]) => [
+                key,
+                replaceTemplateTokens(item, replacements)
+            ])
+        );
+    }
+    if (typeof value !== "string") {
+        return value;
+    }
+    if (replacements.has(value)) {
+        return replacements.get(value);
+    }
+    let result = value;
+    for (const [token, replacement] of replacements) {
+        result = result.split(token).join(String(replacement));
+    }
+    return result;
+}
+
 function mergeTasks(existing, template) {
     if (!Array.isArray(existing.tasks) || !Array.isArray(template.tasks)) {
         fail("tasks.json must contain a tasks array");
@@ -188,13 +213,32 @@ function mergeLaunch(existing, template) {
     };
 }
 
-const [kind, templatePath, targetPath] = process.argv.slice(2);
+const [
+    kind,
+    templatePath,
+    targetPath,
+    toolkitRelativePath,
+    dapPort,
+    rclPort
+] =
+    process.argv.slice(2);
 if (!["tasks", "launch"].includes(kind) || !templatePath || !targetPath) {
-    fail("usage: merge_vscode_json.js tasks|launch TEMPLATE TARGET");
+    fail(
+        "usage: merge_vscode_json.js tasks|launch TEMPLATE TARGET [TOOLKIT_RELATIVE_PATH DAP_PORT RCL_PORT]"
+    );
 }
 
-const existing = readJsonc(targetPath);
-const template = readJsonc(templatePath);
+const existing = fs.existsSync(targetPath)
+    ? readJsonc(targetPath)
+    : kind === "tasks"
+      ? { version: "2.0.0", tasks: [] }
+      : { version: "0.2.0", configurations: [] };
+const replacements = new Map([
+    ["__TRACE32_TOOLKIT_REL__", toolkitRelativePath || "."],
+    ["__T32_DAP_PORT__", Number(dapPort || 58870)],
+    ["__T32_RCL_PORT__", Number(rclPort || 20000)]
+]);
+const template = replaceTemplateTokens(readJsonc(templatePath), replacements);
 const merged =
     kind === "tasks"
         ? mergeTasks(existing, template)
