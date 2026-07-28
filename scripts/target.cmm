@@ -97,7 +97,7 @@ Program:
   SYStem.Option.IMASKASM ON
   SYStem.Option.IMASKHLL ON
 
-  PRINT "trace32_auto: flashed &CFG_ELF"
+  PRINT "trace32-vscode-bridge: flashed &CFG_ELF"
   RETURN
 )
 
@@ -132,7 +132,7 @@ SetupDebug:
   IF !STATE.RUN()
     Go
 
-  PRINT "trace32_auto: symbols loaded for &CFG_PROGRAM"
+  PRINT "trace32-vscode-bridge: symbols loaded for &CFG_PROGRAM"
   RETURN
 )
 
@@ -145,6 +145,6 @@ Done:
   WRITE #1 "&status"
   CLOSE #1
   IF STRing.SCAN("&status","FAIL",0)==0
-    PRINT %ERROR "trace32_auto: &status"
+    PRINT %ERROR "trace32-vscode-bridge: &status"
   RETURN
 )

@@ -1,4 +1,4 @@
-# trace32_auto
+# trace32-vscode-bridge
 
 TRACE32 PowerView + VS Code 的通用调试工装。换新工程时**只改 `config.env`**。
 
@@ -24,7 +24,7 @@ ELF。要在烧写前重新构建，见[串上你的构建](#串上你的构建)
 ## 目录结构
 
 ```text
-trace32_auto/
+trace32-vscode-bridge/
 ├── config.env                 ← 换工程时唯一要改的文件
 ├── install.sh                 ← 把 vscode/ 模板装进工程的 .vscode/
 ├── vscode/
@@ -53,9 +53,9 @@ trace32_auto/
 | 谁 | 怎么解析 |
 |---|---|
 | 脚本自身 | 靠 `${BASH_SOURCE[0]}` / TRACE32 的 `~~~~` 前缀，放哪都能找到自己 |
-| `PROJECT_ROOT`、`ELF` | 分别相对 `trace32_auto/` 和 `PROJECT_ROOT` |
+| `PROJECT_ROOT`、`ELF` | 分别相对 `trace32-vscode-bridge/` 和 `PROJECT_ROOT` |
 | 自带 flash 脚本 | `~~/demo/...`，`~~` 是 TRACE32 自己的安装前缀 |
-| VS Code task | `${workspaceFolder}/trace32_auto/scripts/t32.sh` |
+| VS Code task | `${workspaceFolder}/trace32-vscode-bridge/scripts/t32.sh` |
 | **TRACE32 工具链** | **`T32_SYS`，绝对路径** —— 默认 `$HOME/t32` |
 
 `T32_BIN`、`T32_REM`、`T32_CONFIG`、`T32_DEBUG_ADAPTER` 全部由 `T32_SYS`
@@ -63,23 +63,23 @@ trace32_auto/
 布局不标准时才需要单独指定某一项。临时换一套安装、不想改文件：
 
 ```bash
-T32SYS=/opt/t32 ./trace32_auto/scripts/t32.sh load
+T32SYS=/opt/t32 ./trace32-vscode-bridge/scripts/t32.sh load
 ```
 
-`./trace32_auto/scripts/t32.sh config` 会把所有解析后的路径打出来，
+`./trace32-vscode-bridge/scripts/t32.sh config` 会把所有解析后的路径打出来，
 并标出不存在的那些。
 
 ---
 
 ## 接入一个新工程
 
-1. 把整个 `trace32_auto/` 目录拷进工程根目录：
+1. 把整个 `trace32-vscode-bridge/` 目录拷进工程根目录：
 
    ```bash
-   cp -r /path/to/trace32_auto <your-project>/
+   cp -r /path/to/trace32-vscode-bridge <your-project>/
    ```
 
-2. 编辑 `<your-project>/trace32_auto/config.env`。通常只需要改这几项：
+2. 编辑 `<your-project>/trace32-vscode-bridge/config.env`。通常只需要改这几项：
 
    ```sh
    PROGRAM_NAME="my_app"                 # 必须等于 ELF 文件名（不含扩展名）
@@ -91,7 +91,7 @@ T32SYS=/opt/t32 ./trace32_auto/scripts/t32.sh load
 3. 安装 VS Code 配置：
 
    ```bash
-   ./trace32_auto/install.sh
+   ./trace32-vscode-bridge/install.sh
    ```
 
    如果工程已经有 `.vscode/tasks.json` 或 `.vscode/launch.json`，安装脚本会先
@@ -125,7 +125,7 @@ flash task 依赖工程已有的构建 task：
 ```jsonc
 {
     "label": "T32: Flash",
-    "command": "${workspaceFolder}/trace32_auto/scripts/t32.sh",
+    "command": "${workspaceFolder}/trace32-vscode-bridge/scripts/t32.sh",
     "args": ["flash"],
     "dependsOn": ["cargo build"],     // 或 "make"、"CMake: build" ……
     "dependsOrder": "sequence"
@@ -202,12 +202,12 @@ T32_FLASH_ARGS="CPU=TC387QP DUALPORT=1"
 `scripts/t32.sh` 也可以直接用：
 
 ```bash
-./trace32_auto/scripts/t32.sh flash     # 烧写 + 符号 + 运行
-./trace32_auto/scripts/t32.sh load      # 符号 + 运行
-./trace32_auto/scripts/t32.sh rtt       # RTT 终端
-./trace32_auto/scripts/t32.sh open      # 只开 PowerView
-./trace32_auto/scripts/t32.sh adapter   # 前台运行 DAP 代理（通常由 F5 自动启动）
-./trace32_auto/scripts/t32.sh config    # 打印解析后的配置
+./trace32-vscode-bridge/scripts/t32.sh flash     # 烧写 + 符号 + 运行
+./trace32-vscode-bridge/scripts/t32.sh load      # 符号 + 运行
+./trace32-vscode-bridge/scripts/t32.sh rtt       # RTT 终端
+./trace32-vscode-bridge/scripts/t32.sh open      # 只开 PowerView
+./trace32-vscode-bridge/scripts/t32.sh adapter   # 前台运行 DAP 代理（通常由 F5 自动启动）
+./trace32-vscode-bridge/scripts/t32.sh config    # 打印解析后的配置
 ```
 
 PowerView **只会被启动一次**：之后每次调用都通过 RCL 复用已在运行的实例，
@@ -264,7 +264,7 @@ RTT host 逻辑：
 符号还没加载时可以跳过解析，直接给地址：
 
 ```bash
-./trace32_auto/scripts/t32.sh rtt --cb 0x20000000
+./trace32-vscode-bridge/scripts/t32.sh rtt --cb 0x20000000
 ```
 
 ---

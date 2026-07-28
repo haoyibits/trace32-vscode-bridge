@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# trace32_auto launcher - the single entry point used by the VS Code tasks.
+# trace32-vscode-bridge launcher - the single entry point used by the VS Code tasks.
 #
 #   t32.sh flash     flash the ELF, load symbols and run
 #   t32.sh load      load symbols into the running target
@@ -22,7 +22,7 @@ TOOLKIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_FILE="$TOOLKIT_DIR/config.env"
 RUN_DIR="$TOOLKIT_DIR/.run"
 
-die() { printf 'trace32_auto: %s\n' "$*" >&2; exit 1; }
+die() { printf 'trace32-vscode-bridge: %s\n' "$*" >&2; exit 1; }
 info() { printf '\033[1;36m[t32]\033[0m %s\n' "$*"; }
 
 [[ -f $CONFIG_FILE ]] || die "config not found: $CONFIG_FILE"

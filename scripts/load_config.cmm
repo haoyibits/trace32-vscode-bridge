@@ -36,5 +36,5 @@ IF OS.FILE("~~~~/../.run/config.cmm")
   ENDDO
 )
 
-PRINT %ERROR "trace32_auto: .run/config.cmm missing. Run a VS Code T32 task once to generate it."
+PRINT %ERROR "trace32-vscode-bridge: .run/config.cmm missing. Run a VS Code T32 task once to generate it."
 ENDDO

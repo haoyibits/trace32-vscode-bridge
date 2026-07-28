@@ -5,7 +5,7 @@ TRACE32 owns the debug probe. This process connects to TRACE32's Remote API
 (RCL), drains RTT up-channel 0 to stdout, and forwards stdin to down-channel 0,
 so it carries both printf output and an interactive CLI.
 
-All defaults come from trace32_auto/config.env; the options below only exist to
+All defaults come from trace32-vscode-bridge/config.env; the options below only exist to
 override them for a one-off run.
 
 Requires: python3 -m pip install lauterbach-trace32-rcl

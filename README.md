@@ -1,4 +1,4 @@
-# trace32_auto
+# trace32-vscode-bridge
 
 A reusable TRACE32 PowerView + VS Code debug harness. Moving it to a new
 project means editing **one file**: `config.env`.
@@ -27,7 +27,7 @@ project is Rust, C or anything else — it consumes a finished ELF. See
 ## Layout
 
 ```text
-trace32_auto/
+trace32-vscode-bridge/
 ├── config.env                 ← the only file you edit per project
 ├── install.sh                 ← copies vscode/ templates into the project's .vscode/
 ├── vscode/
@@ -56,9 +56,9 @@ definition lives outside the project:
 | What | How it is resolved |
 |---|---|
 | The scripts themselves | from `${BASH_SOURCE[0]}` / TRACE32's `~~~~` prefix — the toolkit finds itself wherever you drop it |
-| `PROJECT_ROOT`, `ELF` | relative to `trace32_auto/` and to `PROJECT_ROOT` |
+| `PROJECT_ROOT`, `ELF` | relative to `trace32-vscode-bridge/` and to `PROJECT_ROOT` |
 | Stock flash scripts | `~~/demo/...`, where `~~` is TRACE32's own installation prefix |
-| VS Code tasks | `${workspaceFolder}/trace32_auto/scripts/t32.sh` |
+| VS Code tasks | `${workspaceFolder}/trace32-vscode-bridge/scripts/t32.sh` |
 | **TRACE32 tools** | **`T32_SYS`, absolute** — defaults to `$HOME/t32` |
 
 `T32_BIN`, `T32_REM`, `T32_CONFIG` and `T32_DEBUG_ADAPTER` are all derived from
@@ -67,23 +67,23 @@ needs no absolute path at all. Set any of them explicitly only if your layout
 differs. To point at another installation without editing the file:
 
 ```bash
-T32SYS=/opt/t32 ./trace32_auto/scripts/t32.sh load
+T32SYS=/opt/t32 ./trace32-vscode-bridge/scripts/t32.sh load
 ```
 
-`./trace32_auto/scripts/t32.sh config` prints every resolved path and flags the
+`./trace32-vscode-bridge/scripts/t32.sh config` prints every resolved path and flags the
 ones that do not exist.
 
 ---
 
 ## Adding it to a project
 
-1. Copy the whole `trace32_auto/` directory into the project root:
+1. Copy the whole `trace32-vscode-bridge/` directory into the project root:
 
    ```bash
-   cp -r /path/to/trace32_auto <your-project>/
+   cp -r /path/to/trace32-vscode-bridge <your-project>/
    ```
 
-2. Edit `<your-project>/trace32_auto/config.env`. In practice only these
+2. Edit `<your-project>/trace32-vscode-bridge/config.env`. In practice only these
    four keys change between projects:
 
    ```sh
@@ -96,7 +96,7 @@ ones that do not exist.
 3. Install the VS Code files:
 
    ```bash
-   ./trace32_auto/install.sh
+   ./trace32-vscode-bridge/install.sh
    ```
 
    If `.vscode/tasks.json` or `.vscode/launch.json` already exists, the
@@ -131,7 +131,7 @@ task at whatever build task the project already has, in `.vscode/tasks.json`:
 ```jsonc
 {
     "label": "T32: Flash",
-    "command": "${workspaceFolder}/trace32_auto/scripts/t32.sh",
+    "command": "${workspaceFolder}/trace32-vscode-bridge/scripts/t32.sh",
     "args": ["flash"],
     "dependsOn": ["cargo build"],     // or "make", "CMake: build", ...
     "dependsOrder": "sequence"
@@ -214,12 +214,12 @@ value above.
 `scripts/t32.sh` is usable directly:
 
 ```bash
-./trace32_auto/scripts/t32.sh flash     # flash + symbols + run
-./trace32_auto/scripts/t32.sh load      # symbols + run
-./trace32_auto/scripts/t32.sh rtt       # RTT terminal
-./trace32_auto/scripts/t32.sh open      # start PowerView only
-./trace32_auto/scripts/t32.sh adapter   # foreground DAP proxy (normally started by F5)
-./trace32_auto/scripts/t32.sh config    # print the resolved configuration
+./trace32-vscode-bridge/scripts/t32.sh flash     # flash + symbols + run
+./trace32-vscode-bridge/scripts/t32.sh load      # symbols + run
+./trace32-vscode-bridge/scripts/t32.sh rtt       # RTT terminal
+./trace32-vscode-bridge/scripts/t32.sh open      # start PowerView only
+./trace32-vscode-bridge/scripts/t32.sh adapter   # foreground DAP proxy (normally started by F5)
+./trace32-vscode-bridge/scripts/t32.sh config    # print the resolved configuration
 ```
 
 PowerView is **started once**. Every later invocation detects the open RCL port
@@ -285,7 +285,7 @@ Whatever escape sequences the target emits are the target's business.
 If symbols are not loaded yet, skip the lookup and give the address directly:
 
 ```bash
-./trace32_auto/scripts/t32.sh rtt --cb 0x20000000
+./trace32-vscode-bridge/scripts/t32.sh rtt --cb 0x20000000
 ```
 
 ---
