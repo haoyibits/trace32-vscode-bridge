@@ -127,7 +127,14 @@ SetupDebug:
   IF "&CFG_DUALPORT"!=""
     SYStem.Option.DUALPORT &CFG_DUALPORT
 
+  ; Open code window
   List.auto
+
+  ; Set up Freertos
+  TASK.CONFIG ~~/demo/arm/kernel/freertos/freertos.t32
+  MENU.ReProgram ~~/demo/arm/kernel/freertos/freertos.men
+  TASK.List
+
 
   IF !STATE.RUN()
     Go
