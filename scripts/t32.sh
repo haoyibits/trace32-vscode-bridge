@@ -2,11 +2,11 @@
 # ==============================================================================
 # trace32_auto launcher - the single entry point used by the VS Code tasks.
 #
-#   t32.sh flash     flash the ELF, load symbols, run, start the DAP adapter
-#   t32.sh load      load symbols into the running target, start DAP adapter
+#   t32.sh flash     flash the ELF, load symbols and run
+#   t32.sh load      load symbols into the running target
 #   t32.sh rtt       interactive SEGGER RTT terminal
 #   t32.sh open      start PowerView only
-#   t32.sh stop      stop the DAP adapter started by this script
+#   t32.sh adapter   run the DAP compatibility proxy in the foreground
 #
 # PowerView is started once and then reused: every later invocation drives the
 # already running instance through the TRACE32 Remote API (RCL).
@@ -48,6 +48,7 @@ T32_DEBUG_ADAPTER=""
 T32_RCL_PORT="20000"
 T32_DAP_PORT="58870"
 T32_DAP_BACKEND_PORT="58871"
+T32_DAP_BACKEND_TIMEOUT="30"
 T32_NODE=""
 T32_TIMEOUT="600"
 
@@ -219,7 +220,6 @@ t32_do() {
 
 start_adapter() {
     [[ -n $T32_DEBUG_ADAPTER ]] || return 0
-    mkdir -p "$RUN_DIR"
     if port_open "$T32_DAP_PORT"; then
         info "debug adapter already listening on $T32_DAP_PORT"
         return
@@ -232,20 +232,17 @@ start_adapter() {
         || die "T32_DAP_PORT and T32_DAP_BACKEND_PORT must be different"
     ! port_open "$T32_DAP_BACKEND_PORT" \
         || die "internal DAP port $T32_DAP_BACKEND_PORT is already in use"
+
+    rm -f "$RUN_DIR/adapter.pid"
     info "starting DAP compatibility proxy on port $T32_DAP_PORT"
-    (
-        T32_DEBUG_ADAPTER="$T32_DEBUG_ADAPTER" \
-        T32_REM="$T32_REM" \
-        T32_RCL_PORT="$T32_RCL_PORT" \
-        T32_DAP_PORT="$T32_DAP_PORT" \
-        T32_DAP_BACKEND_PORT="$T32_DAP_BACKEND_PORT" \
-        T32_RESET_SCRIPT="$TOOLKIT_DIR/scripts/reset_stop.cmm" \
-        nohup "$T32_NODE" "$TOOLKIT_DIR/scripts/t32_dap_proxy.js" \
-            >"$RUN_DIR/adapter.log" 2>&1 &
-        echo $! >"$RUN_DIR/adapter.pid"
-        disown
-    )
-    wait_port "$T32_DAP_PORT" 30 || die "debug adapter did not open port $T32_DAP_PORT"
+    T32_DEBUG_ADAPTER="$T32_DEBUG_ADAPTER" \
+    T32_REM="$T32_REM" \
+    T32_RCL_PORT="$T32_RCL_PORT" \
+    T32_DAP_PORT="$T32_DAP_PORT" \
+    T32_DAP_BACKEND_PORT="$T32_DAP_BACKEND_PORT" \
+    T32_DAP_BACKEND_TIMEOUT="$T32_DAP_BACKEND_TIMEOUT" \
+    T32_RESET_SCRIPT="$TOOLKIT_DIR/scripts/reset_stop.cmm" \
+        exec "$T32_NODE" "$TOOLKIT_DIR/scripts/t32_dap_proxy.js"
 }
 
 # ------------------------------------------------------------------------------
@@ -261,7 +258,6 @@ case "${1:-flash}" in
         start_powerview
         info "flashing $ELF_PATH"
         t32_do "$TOOLKIT_DIR/scripts/target.cmm" ACTION=flash "ROOT=$TOOLKIT_DIR"
-        start_adapter
         info "flashed, symbols loaded, target running"
         ;;
 
@@ -272,7 +268,6 @@ case "${1:-flash}" in
         start_powerview
         info "loading symbols from $ELF_PATH"
         t32_do "$TOOLKIT_DIR/scripts/target.cmm" ACTION=load "ROOT=$TOOLKIT_DIR"
-        start_adapter
         info "symbols loaded, target running"
         ;;
 
@@ -308,17 +303,7 @@ case "${1:-flash}" in
         cat "$RUN_DIR/config.cmm"
         ;;
 
-    stop)
-        if [[ -f $RUN_DIR/adapter.pid ]]; then
-            kill "$(cat "$RUN_DIR/adapter.pid")" 2>/dev/null || true
-            rm -f "$RUN_DIR/adapter.pid"
-            info "debug adapter proxy stopped"
-        else
-            info "no adapter pid recorded"
-        fi
-        ;;
-
     *)
-        die "unknown command '$1' (flash|load|rtt|open|adapter|stop|config)"
+        die "unknown command '$1' (flash|load|rtt|open|adapter|config)"
         ;;
 esac

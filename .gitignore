@@ -1,6 +1,6 @@
 .run/
 __pycache__/
-
+.DS_Store
 # Vendor flash scripts are frequently under NDA or cover unannounced parts.
 # Ignore them by default; add a specific one with "git add -f" once you have
 # checked it is safe to share. See scripts/flash/README.md.

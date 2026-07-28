@@ -4,15 +4,17 @@ TRACE32 PowerView + VS Code 的通用调试工装。换新工程时**只改 `con
 
 *English: [README.md](README.md)*
 
-提供三条流程：
+提供三个可见任务和一个调试配置：
 
 | VS Code | 做什么 |
 |---|---|
-| 任务 `T32: Flash + Debug` / 调试配置 `1. Flash + Debug` | 烧写 → 加载符号 → 运行 → 拉起 DAP adapter |
-| 任务 `T32: Load + Debug` / 调试配置 `2. Load + Debug` | 不烧写，attach 已在跑的目标并加载符号 |
+| 任务 `T32: Flash` | 烧写现有 ELF → 加载符号 → 运行；不构建 |
+| 任务 `T32: Load ELF` | 不构建、不烧写，只加载现有 ELF 的符号并运行 |
 | 任务 `T32: RTT Viewer` | 双向 SEGGER RTT 终端（printf 输出 + CLI 输入） |
+| 调试配置 `TRACE32: Attach` | 自动启动隐藏的 DAP adapter task，然后 attach |
 
-按 F5 选调试配置会自动跑对应的 task，然后 attach，直接在 VS Code 里下断点、单步。
+先按需运行 Flash 或 Load ELF，再按 F5 选择 `TRACE32: Attach`。adapter 会自动
+启动，之后可以直接在 VS Code 里下断点、单步。
 
 **构建不归这套工装管。** 它不关心你的工程是 Rust 还是 C，只消费一个已经编好的
 ELF。要在烧写前重新构建，见[串上你的构建](#串上你的构建)。
@@ -92,6 +94,10 @@ T32SYS=/opt/t32 ./trace32_auto/scripts/t32.sh load
    ./trace32_auto/install.sh
    ```
 
+   如果工程已经有 `.vscode/tasks.json` 或 `.vscode/launch.json`，安装脚本会先
+   备份再合并：原有任务和调试配置都会保留，TRACE32 同名项则更新，重复运行也
+   不会产生重复项。
+
 4. 确认 `~/t32/config.t32` 里有 Remote API：
 
    ```text
@@ -118,7 +124,7 @@ flash task 依赖工程已有的构建 task：
 
 ```jsonc
 {
-    "label": "T32: Flash + Debug",
+    "label": "T32: Flash",
     "command": "${workspaceFolder}/trace32_auto/scripts/t32.sh",
     "args": ["flash"],
     "dependsOn": ["cargo build"],     // 或 "make"、"CMake: build" ……
@@ -126,8 +132,8 @@ flash task 依赖工程已有的构建 task：
 }
 ```
 
-这一行在随附的 `tasks.json` 里已经写好，只是注释掉了。被依赖的 task 可以定义在
-同一个文件里，也可以来自插件（rust-analyzer、CMake Tools 等）。
+模板默认不依赖任何构建 task；需要时自行加入上面的 `dependsOn`。被依赖的 task
+可以定义在同一个文件里，也可以来自插件（rust-analyzer、CMake Tools 等）。
 `"dependsOrder": "sequence"` 是让 VS Code 等构建跑完再烧写的关键，
 否则两个会并发。
 
@@ -196,12 +202,12 @@ T32_FLASH_ARGS="CPU=TC387QP DUALPORT=1"
 `scripts/t32.sh` 也可以直接用：
 
 ```bash
-./trace32_auto/scripts/t32.sh flash     # 烧写 + 符号 + 运行 + adapter
-./trace32_auto/scripts/t32.sh load      # 符号 + 运行 + adapter
+./trace32_auto/scripts/t32.sh flash     # 烧写 + 符号 + 运行
+./trace32_auto/scripts/t32.sh load      # 符号 + 运行
 ./trace32_auto/scripts/t32.sh rtt       # RTT 终端
 ./trace32_auto/scripts/t32.sh open      # 只开 PowerView
+./trace32_auto/scripts/t32.sh adapter   # 前台运行 DAP 代理（通常由 F5 自动启动）
 ./trace32_auto/scripts/t32.sh config    # 打印解析后的配置
-./trace32_auto/scripts/t32.sh stop      # 停掉 DAP 兼容代理及 adapter
 ```
 
 PowerView **只会被启动一次**：之后每次调用都通过 RCL 复用已在运行的实例，
@@ -214,10 +220,9 @@ PowerView **只会被启动一次**：之后每次调用都通过 RCL 复用已�
 ```text
 VS Code ──dependsOn──> 你自己的构建 task           (cargo / make / cmake ...)
         └───task─────> t32.sh ──┬─> PowerView  -s startup.cmm         (首次启动)
-                                ├─> t32rem --RCL 20000--> target.cmm  (烧写/符号)
-                                └─> DAP proxy :58870
-                                      └─> t32debugadapter :58871
+                                └─> t32rem --RCL 20000--> target.cmm  (烧写/符号)
 
+VS Code F5 ──> 隐藏 adapter task ──> t32.sh adapter
 VS Code ──DAP 58870──> compatibility proxy ──DAP 58871──> t32debugadapter
                                                         └─RCL 20000──> PowerView
 rtt_viewer.py ─────────────────────────RCL 20000──> PowerView
@@ -286,4 +291,5 @@ TRACE32 用空格分隔 CMM 参数，工程路径/ELF 路径里不能有空格�
 
 **Reset 后一直运行、不上报断点**
 确认启动的是 `t32.sh` 拉起的兼容代理而不是手动运行的原始 adapter，并查看
-`.run/adapter.log`。Reset 必须经过代理，才能执行“RCL Reset + DAP Continue”。
+VS Code 的 `T32: Start Debug Adapter` 任务终端。Reset 必须经过代理，才能执行
+“RCL Reset + DAP Continue”。

@@ -19,6 +19,8 @@ function requiredEnv(name) {
 
 const frontendPort = Number(process.env.T32_DAP_PORT || "58870");
 const backendPort = Number(process.env.T32_DAP_BACKEND_PORT || "58871");
+const backendTimeoutMs =
+    Number(process.env.T32_DAP_BACKEND_TIMEOUT || "30") * 1000;
 const rclPort = Number(process.env.T32_RCL_PORT || "20000");
 const adapter = requiredEnv("T32_DEBUG_ADAPTER");
 const t32rem = requiredEnv("T32_REM");
@@ -154,7 +156,11 @@ function handleRestart(request, continueTarget) {
     });
 }
 
-function connectBackend(client, initialChunk, attempt = 0) {
+function connectBackend(
+    client,
+    initialChunk,
+    deadline = Date.now() + backendTimeoutMs
+) {
     if (client.destroyed) {
         if (activeClient === client) {
             activeClient = null;
@@ -299,7 +305,7 @@ function connectBackend(client, initialChunk, attempt = 0) {
 
     backend.once("error", (error) => {
         backend.destroy();
-        if (attempt < 30 && error.code === "ECONNREFUSED") {
+        if (Date.now() < deadline && error.code === "ECONNREFUSED") {
             if (client.destroyed) {
                 if (activeClient === client) {
                     activeClient = null;
@@ -307,7 +313,7 @@ function connectBackend(client, initialChunk, attempt = 0) {
                 return;
             }
             setTimeout(
-                () => connectBackend(client, initialChunk, attempt + 1),
+                () => connectBackend(client, initialChunk, deadline),
                 100
             );
             return;
@@ -375,19 +381,23 @@ adapterProcess.on("exit", (code, signal) => {
 });
 
 server = net.createServer((client) => {
-    if (activeClient) {
-        client.destroy();
-        return;
-    }
-
-    activeClient = client;
+    let claimed = false;
     client.setNoDelay(true);
     client.once("data", (chunk) => {
+        if (activeClient) {
+            client.destroy();
+            return;
+        }
+        activeClient = client;
+        claimed = true;
         dapSessionStarted = true;
         client.pause();
         connectBackend(client, chunk);
     });
     client.on("close", () => {
+        if (!claimed) {
+            return;
+        }
         if (dapSessionStarted) {
             shutdown(0);
             return;

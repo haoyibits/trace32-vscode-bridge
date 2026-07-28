@@ -5,17 +5,18 @@ project means editing **one file**: `config.env`.
 
 *中文版：[README.zh-CN.md](README.zh-CN.md)*
 
-Three flows:
+Three visible tasks and one launch configuration:
 
 | VS Code | What it does |
 |---|---|
-| Task `T32: Flash + Debug` / launch config `1. Flash + Debug` | flash → load symbols → run → start the DAP adapter |
-| Task `T32: Load + Debug` / launch config `2. Load + Debug` | no flash: attach to the running target and load symbols |
+| Task `T32: Flash` | flash the existing ELF → load symbols → run; no build |
+| Task `T32: Load ELF` | no build and no flash: load symbols from the existing ELF, then run |
 | Task `T32: RTT Viewer` | bidirectional SEGGER RTT terminal (printf output plus CLI input) |
+| Launch config `TRACE32: Attach` | start the hidden DAP adapter task automatically, then attach |
 
-Both launch configurations carry a `preLaunchTask`, so pressing F5 runs the
-task and attaches in one step. Set breakpoints and single-step in VS Code as
-usual.
+Run Flash or Load ELF when needed, then press F5 and select `TRACE32: Attach`.
+The adapter starts automatically; set breakpoints and single-step in VS Code
+as usual.
 
 **Building is out of scope.** The toolkit does not know or care whether the
 project is Rust, C or anything else — it consumes a finished ELF. See
@@ -98,6 +99,11 @@ ones that do not exist.
    ./trace32_auto/install.sh
    ```
 
+   If `.vscode/tasks.json` or `.vscode/launch.json` already exists, the
+   installer backs it up and merges it. Existing tasks and launch
+   configurations are retained, matching TRACE32 entries are updated, and
+   repeated installs do not create duplicates.
+
 4. Make sure `~/t32/config.t32` enables the Remote API:
 
    ```text
@@ -124,7 +130,7 @@ task at whatever build task the project already has, in `.vscode/tasks.json`:
 
 ```jsonc
 {
-    "label": "T32: Flash + Debug",
+    "label": "T32: Flash",
     "command": "${workspaceFolder}/trace32_auto/scripts/t32.sh",
     "args": ["flash"],
     "dependsOn": ["cargo build"],     // or "make", "CMake: build", ...
@@ -132,8 +138,8 @@ task at whatever build task the project already has, in `.vscode/tasks.json`:
 }
 ```
 
-The line is present but commented out in the shipped `tasks.json`. The
-referenced task can be defined in the same file or provided by an extension
+The template has no build dependency by default; add `dependsOn` yourself when
+needed. The referenced task can be defined in the same file or provided by an extension
 (rust-analyzer, CMake Tools, …). `"dependsOrder": "sequence"` is what makes VS
 Code wait for the build to finish instead of running both at once.
 
@@ -208,12 +214,12 @@ value above.
 `scripts/t32.sh` is usable directly:
 
 ```bash
-./trace32_auto/scripts/t32.sh flash     # flash + symbols + run + adapter
-./trace32_auto/scripts/t32.sh load      # symbols + run + adapter
+./trace32_auto/scripts/t32.sh flash     # flash + symbols + run
+./trace32_auto/scripts/t32.sh load      # symbols + run
 ./trace32_auto/scripts/t32.sh rtt       # RTT terminal
 ./trace32_auto/scripts/t32.sh open      # start PowerView only
+./trace32_auto/scripts/t32.sh adapter   # foreground DAP proxy (normally started by F5)
 ./trace32_auto/scripts/t32.sh config    # print the resolved configuration
-./trace32_auto/scripts/t32.sh stop      # stop the DAP proxy and adapter
 ```
 
 PowerView is **started once**. Every later invocation detects the open RCL port
@@ -226,10 +232,9 @@ and drives the running instance instead of opening another window.
 ```text
 VS Code ──dependsOn──> your build task            (cargo / make / cmake / ...)
         └───task─────> t32.sh ──┬─> PowerView  -s startup.cmm         (first run only)
-                                ├─> t32rem ──RCL 20000──> target.cmm  (flash / symbols)
-                                └─> DAP proxy :58870
-                                      └─> t32debugadapter :58871
+                                └─> t32rem ──RCL 20000──> target.cmm  (flash / symbols)
 
+VS Code F5 ──> hidden adapter task ──> t32.sh adapter
 VS Code ──DAP 58870──> compatibility proxy ──DAP 58871──> t32debugadapter
                                                         └─RCL 20000──> PowerView
 rtt_viewer.py ─────────────────────────RCL 20000──> PowerView
@@ -311,5 +316,6 @@ globals to Watch; inspect complex structures and RTOS objects in PowerView.
 
 **Reset runs forever and does not report a breakpoint**
 Make sure the adapter was started through `t32.sh`, not by launching the raw
-adapter manually, and inspect `.run/adapter.log`. Reset must pass through the
-proxy to perform the coordinated RCL Reset plus DAP Continue.
+adapter manually, and inspect the VS Code `T32: Start Debug Adapter` task
+terminal. Reset must pass through the proxy to perform the coordinated RCL
+Reset plus DAP Continue.

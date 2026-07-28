@@ -262,7 +262,7 @@ def main():
         except Exception as error:
             sys.exit(
                 f"cannot resolve {args.symbol} in '{args.program}' ({error})\n"
-                "Run the 'T32: Load + Debug' task first, or pass --cb 0x<address>."
+                "Run the 'T32: Load ELF' task first, or pass --cb 0x<address>."
             )
 
     channel = RttChannel(debugger, control_block)
@@ -270,6 +270,17 @@ def main():
         f"TRACE32 RTT: {args.symbol} @ 0x{control_block:08X}; Ctrl-C to stop",
         file=sys.stderr,
     )
+
+    try:
+        initialized = channel.refresh_state()
+    except Exception:
+        initialized = False
+    if not initialized:
+        print(
+            "[rtt] waiting for the target to initialize SEGGER RTT; "
+            "if debugging is paused before RTT initialization, press Continue",
+            file=sys.stderr,
+        )
 
     if args.replay:
         debugger.memory.write_uint32(
