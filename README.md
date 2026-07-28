@@ -37,6 +37,8 @@ trace32_auto/
     ├── startup.cmm            ← PowerView startup script
     ├── load_config.cmm        ← loads the generated .run/config.cmm
     ├── target.cmm             ← the flash and load actions
+    ├── t32_dap_proxy.js       ← DAP compatibility proxy (Pause / Reset fixes)
+    ├── reset_stop.cmm         ← reset-and-stop helper; DAP then continues
     ├── toolbar.cmm            ← two PowerView toolbar buttons
     ├── flash/                 ← local flash scripts (usually empty)
     └── rtt_viewer.py          ← RTT terminal
@@ -107,6 +109,12 @@ ones that do not exist.
 
    ```bash
    python3 -m pip install lauterbach-trace32-rcl
+   ```
+
+6. Make sure Node.js is installed (the DAP compatibility proxy uses it):
+
+   ```bash
+   node --version
    ```
 
 ### Chaining your build
@@ -205,7 +213,7 @@ value above.
 ./trace32_auto/scripts/t32.sh rtt       # RTT terminal
 ./trace32_auto/scripts/t32.sh open      # start PowerView only
 ./trace32_auto/scripts/t32.sh config    # print the resolved configuration
-./trace32_auto/scripts/t32.sh stop      # stop the DAP adapter this script started
+./trace32_auto/scripts/t32.sh stop      # stop the DAP proxy and adapter
 ```
 
 PowerView is **started once**. Every later invocation detects the open RCL port
@@ -219,9 +227,11 @@ and drives the running instance instead of opening another window.
 VS Code ──dependsOn──> your build task            (cargo / make / cmake / ...)
         └───task─────> t32.sh ──┬─> PowerView  -s startup.cmm         (first run only)
                                 ├─> t32rem ──RCL 20000──> target.cmm  (flash / symbols)
-                                └─> t32debugadapter --port 58870      (DAP)
+                                └─> DAP proxy :58870
+                                      └─> t32debugadapter :58871
 
-VS Code ──DAP 58870──> t32debugadapter ──RCL 20000──> PowerView
+VS Code ──DAP 58870──> compatibility proxy ──DAP 58871──> t32debugadapter
+                                                        └─RCL 20000──> PowerView
 rtt_viewer.py ─────────────────────────RCL 20000──> PowerView
 ```
 
@@ -241,6 +251,12 @@ Design notes:
   running target's memory alone.
 - **`SYStem.Option.DUALPORT ON`** is what RTT depends on: the viewer reads and
   writes the ring buffers through run-time AXI access without halting the core.
+- **Pause/Locals workaround.** The proxy suppresses only the Locals request
+  that can terminate adapter v0.0.27. Breakpoints, pause, stepping, call stack,
+  registers, and explicit Watch expressions still use normal DAP requests.
+- **Reset workaround.** RCL resets the target and leaves it stopped; the DAP
+  adapter then issues Continue itself, so post-reset VS Code breakpoint hits
+  are reported correctly.
 
 ---
 
@@ -289,7 +305,11 @@ Check that the target is attached and `SYStem.Option.DUALPORT ON` took effect;
 the `load` action sets it automatically.
 
 **Variables pane reports `Invalid letter code`**
-`t32debugadapter` can fail reading locals on some FreeRTOS interrupt stack
-frames and then exits. Collapse the `Variables` section in Run and Debug;
-breakpoints, stepping and the call stack are unaffected, and variables can be
-inspected in PowerView meanwhile.
+The compatibility proxy suppresses this known-bad Locals request, so Locals is
+temporarily empty instead of terminating the debug session. Add ordinary
+globals to Watch; inspect complex structures and RTOS objects in PowerView.
+
+**Reset runs forever and does not report a breakpoint**
+Make sure the adapter was started through `t32.sh`, not by launching the raw
+adapter manually, and inspect `.run/adapter.log`. Reset must pass through the
+proxy to perform the coordinated RCL Reset plus DAP Continue.

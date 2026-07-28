@@ -47,6 +47,8 @@ T32_REM=""
 T32_DEBUG_ADAPTER=""
 T32_RCL_PORT="20000"
 T32_DAP_PORT="58870"
+T32_DAP_BACKEND_PORT="58871"
+T32_NODE=""
 T32_TIMEOUT="600"
 
 # shellcheck source=/dev/null
@@ -91,6 +93,14 @@ fi
 [[ -n $T32_REM ]]           || T32_REM="$T32_SYS/bin/$T32_HOST/t32rem"
 [[ -n $T32_CONFIG ]]        || T32_CONFIG="$T32_SYS/config.t32"
 [[ -n $T32_DEBUG_ADAPTER ]] || T32_DEBUG_ADAPTER="$T32_SYS/demo/env/vscode/bin/$T32_HOST/t32debugadapter"
+[[ -n $T32_NODE ]]          || T32_NODE="$(command -v node || true)"
+
+# The macOS wrapper launches t32rem through LaunchServices and returns before
+# the command completes. The bundle executable is synchronous, which is
+# required by the CMM handshake and the DAP Reset workaround.
+if [[ $T32_HOST == macosx64 && -x "$T32_REM.app/Contents/MacOS/t32rem" ]]; then
+    T32_REM="$T32_REM.app/Contents/MacOS/t32rem"
+fi
 
 # TRACE32 splits CMM arguments on whitespace, so these paths cannot contain any.
 for path in "$TOOLKIT_DIR" "$ELF_PATH" "$FLASH_PATH"; do
@@ -209,15 +219,28 @@ t32_do() {
 
 start_adapter() {
     [[ -n $T32_DEBUG_ADAPTER ]] || return 0
+    mkdir -p "$RUN_DIR"
     if port_open "$T32_DAP_PORT"; then
         info "debug adapter already listening on $T32_DAP_PORT"
         return
     fi
     [[ -x $T32_DEBUG_ADAPTER ]] \
         || die "debug adapter not executable: $T32_DEBUG_ADAPTER (check T32_SYS / T32_HOST in config.env)"
-    info "starting t32debugadapter on port $T32_DAP_PORT"
+    [[ -x $T32_NODE ]] \
+        || die "Node.js not found: ${T32_NODE:-<empty>} (install Node.js or set T32_NODE in config.env)"
+    [[ $T32_DAP_PORT != "$T32_DAP_BACKEND_PORT" ]] \
+        || die "T32_DAP_PORT and T32_DAP_BACKEND_PORT must be different"
+    ! port_open "$T32_DAP_BACKEND_PORT" \
+        || die "internal DAP port $T32_DAP_BACKEND_PORT is already in use"
+    info "starting DAP compatibility proxy on port $T32_DAP_PORT"
     (
-        nohup "$T32_DEBUG_ADAPTER" --port "$T32_DAP_PORT" \
+        T32_DEBUG_ADAPTER="$T32_DEBUG_ADAPTER" \
+        T32_REM="$T32_REM" \
+        T32_RCL_PORT="$T32_RCL_PORT" \
+        T32_DAP_PORT="$T32_DAP_PORT" \
+        T32_DAP_BACKEND_PORT="$T32_DAP_BACKEND_PORT" \
+        T32_RESET_SCRIPT="$TOOLKIT_DIR/scripts/reset_stop.cmm" \
+        nohup "$T32_NODE" "$TOOLKIT_DIR/scripts/t32_dap_proxy.js" \
             >"$RUN_DIR/adapter.log" 2>&1 &
         echo $! >"$RUN_DIR/adapter.pid"
         disown
@@ -272,7 +295,8 @@ case "${1:-flash}" in
         write_cmm_config
         info "resolved TRACE32 installation paths"
         for entry in "T32_BIN=$T32_BIN" "T32_REM=$T32_REM" \
-                     "T32_CONFIG=$T32_CONFIG" "T32_DEBUG_ADAPTER=$T32_DEBUG_ADAPTER"; do
+                     "T32_CONFIG=$T32_CONFIG" "T32_DEBUG_ADAPTER=$T32_DEBUG_ADAPTER" \
+                     "T32_NODE=$T32_NODE"; do
             path="${entry#*=}"
             if [[ -e $path ]]; then
                 printf '  ok      %s\n' "$entry"
@@ -288,7 +312,7 @@ case "${1:-flash}" in
         if [[ -f $RUN_DIR/adapter.pid ]]; then
             kill "$(cat "$RUN_DIR/adapter.pid")" 2>/dev/null || true
             rm -f "$RUN_DIR/adapter.pid"
-            info "debug adapter stopped"
+            info "debug adapter proxy stopped"
         else
             info "no adapter pid recorded"
         fi

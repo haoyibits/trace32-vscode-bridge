@@ -33,6 +33,8 @@ trace32_auto/
     ├── startup.cmm            ← PowerView 启动脚本
     ├── load_config.cmm        ← 加载生成的 .run/config.cmm
     ├── target.cmm             ← flash / load 两个动作
+    ├── t32_dap_proxy.js       ← DAP 兼容代理（Pause / Reset workaround）
+    ├── reset_stop.cmm         ← Reset 后保持停止，由 DAP Continue
     ├── toolbar.cmm            ← PowerView 上的两个按钮
     ├── flash/                 ← 本地 flash 脚本（通常是空的）
     └── rtt_viewer.py          ← RTT 终端
@@ -101,6 +103,12 @@ T32SYS=/opt/t32 ./trace32_auto/scripts/t32.sh load
 
    ```bash
    python3 -m pip install lauterbach-trace32-rcl
+   ```
+
+6. 确认系统已安装 Node.js（DAP 兼容代理使用）：
+
+   ```bash
+   node --version
    ```
 
 ### 串上你的构建
@@ -193,7 +201,7 @@ T32_FLASH_ARGS="CPU=TC387QP DUALPORT=1"
 ./trace32_auto/scripts/t32.sh rtt       # RTT 终端
 ./trace32_auto/scripts/t32.sh open      # 只开 PowerView
 ./trace32_auto/scripts/t32.sh config    # 打印解析后的配置
-./trace32_auto/scripts/t32.sh stop      # 停掉本脚本启动的 DAP adapter
+./trace32_auto/scripts/t32.sh stop      # 停掉 DAP 兼容代理及 adapter
 ```
 
 PowerView **只会被启动一次**：之后每次调用都通过 RCL 复用已在运行的实例，
@@ -207,9 +215,11 @@ PowerView **只会被启动一次**：之后每次调用都通过 RCL 复用已�
 VS Code ──dependsOn──> 你自己的构建 task           (cargo / make / cmake ...)
         └───task─────> t32.sh ──┬─> PowerView  -s startup.cmm         (首次启动)
                                 ├─> t32rem --RCL 20000--> target.cmm  (烧写/符号)
-                                └─> t32debugadapter --port 58870      (DAP)
+                                └─> DAP proxy :58870
+                                      └─> t32debugadapter :58871
 
-VS Code ──DAP 58870──> t32debugadapter ──RCL 20000──> PowerView
+VS Code ──DAP 58870──> compatibility proxy ──DAP 58871──> t32debugadapter
+                                                        └─RCL 20000──> PowerView
 rtt_viewer.py ─────────────────────────RCL 20000──> PowerView
 ```
 
@@ -224,6 +234,10 @@ rtt_viewer.py ──────────────────────
 - **符号只加载不覆盖**：`Data.LOAD.Elf /NoCODE`，绝不动正在跑的目标内存。
 - **`SYStem.Option.DUALPORT ON`** 是 RTT 的前提，RTT viewer 靠运行时 AXI
   访问读写 ring buffer，CPU 不会被停下来。
+- **Pause/Locals workaround**：代理只屏蔽会让 v0.0.27 退出的 Locals 请求；
+  断点、暂停、单步、调用栈、寄存器和手动 Watch 继续走标准 DAP。
+- **Reset workaround**：外部 RCL 只负责复位并保持停止，随后由 DAP adapter
+  自己 Continue，因此能够正确上报 Reset 后命中的 VS Code 断点。
 
 ---
 
@@ -266,6 +280,10 @@ TRACE32 用空格分隔 CMM 参数，工程路径/ELF 路径里不能有空格�
 确认目标已 attach 且 `SYStem.Option.DUALPORT ON` 已生效（`load` 动作会自动设）。
 
 **Variables 面板报 `Invalid letter code`**
-`t32debugadapter` 在某些 FreeRTOS 中断栈帧上读局部变量会出这个错并退出。
-把 Run and Debug 里的 `Variables` 区域折叠起来，断点/单步/调用栈不受影响，
-变量临时到 PowerView 里看。
+兼容代理会拦截这个已知有问题的 Locals 请求，因此 Locals 暂时显示为空，但不会
+退出调试。普通全局变量可手动加到 Watch；复杂结构和 RTOS 对象建议在 PowerView
+里查看。
+
+**Reset 后一直运行、不上报断点**
+确认启动的是 `t32.sh` 拉起的兼容代理而不是手动运行的原始 adapter，并查看
+`.run/adapter.log`。Reset 必须经过代理，才能执行“RCL Reset + DAP Continue”。
