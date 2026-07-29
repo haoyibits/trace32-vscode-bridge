@@ -7,7 +7,11 @@ from pathlib import Path
 from unittest import mock
 
 from trace32_bridge.errors import BridgeError
-from trace32_bridge.powerview import install_toolbar, start_powerview
+from trace32_bridge.powerview import (
+    install_toolbar,
+    start_powerview,
+    wait_for_powerview,
+)
 
 
 class PowerViewTests(unittest.TestCase):
@@ -70,6 +74,28 @@ class PowerViewTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(BridgeError, "exited with code 7"):
                     start_powerview(config)
+
+    def test_successful_launcher_exit_waits_for_detached_application(self) -> None:
+        config = mock.Mock(rcl_port=20000)
+        process = mock.Mock()
+        process.poll.return_value = 0
+
+        with (
+            mock.patch(
+                "trace32_bridge.powerview.port_open",
+                side_effect=[False, True],
+            ),
+            mock.patch("trace32_bridge.powerview.verify_rcl") as verify_rcl,
+            mock.patch("trace32_bridge.powerview.time.sleep"),
+        ):
+            wait_for_powerview(
+                config,
+                process,
+                Path("/tmp/powerview.log"),
+                timeout=1,
+            )
+
+        verify_rcl.assert_called_once_with(config)
 
 
 if __name__ == "__main__":

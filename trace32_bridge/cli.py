@@ -27,7 +27,10 @@ def _parser() -> argparse.ArgumentParser:
     subparsers.add_parser("open", help="start or reuse PowerView")
     subparsers.add_parser("adapter", help="run the DAP compatibility proxy")
     subparsers.add_parser("config", help="print resolved configuration")
-    subparsers.add_parser("install-vscode", help="merge the VS Code templates")
+    subparsers.add_parser(
+        "install-vscode",
+        help="bind the current Python and merge the VS Code templates",
+    )
     subparsers.add_parser("rtt", help="run the interactive RTT terminal")
     return parser
 

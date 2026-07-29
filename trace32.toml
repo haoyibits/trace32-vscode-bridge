@@ -17,10 +17,9 @@ menu = "~~/demo/arm/kernel/freertos/freertos.men"
 show_tasks = true
 
 [flash]
-# The actual project owns this script. TRACE32's "~~/demo/..." paths and paths
-# relative to this toolkit are both supported. With the default project layout,
-# "../scripts/flash.cmm" points at <actual-project>/scripts/flash.cmm.
-script = "../scripts/flash.cmm"
+# The actual project owns this script. Keep it beside toolbar.cmm, or use a
+# TRACE32 path beginning with "~~/". Normal paths are relative to this toolkit.
+script = "trace32_bridge/cmm/flash.cmm"
 args = ["DUALPORT=1", "JTAG_CLOCK=10MHz"]
 
 [trace32]

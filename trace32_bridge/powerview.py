@@ -41,13 +41,18 @@ def wait_for_powerview(
 ) -> None:
     deadline = time.monotonic() + timeout
     last_rcl_error: BridgeError | None = None
+    launcher_exited_cleanly = False
     while time.monotonic() <= deadline:
         return_code = process.poll()
-        if return_code is not None:
+        if return_code not in (None, 0):
             raise BridgeError(
                 f"PowerView exited with code {return_code} before RCL became ready; "
                 f"check {log_path}"
             )
+        if return_code == 0:
+            # On macOS the t32*-qt launcher delegates to `open`, which exits
+            # successfully while the application continues starting.
+            launcher_exited_cleanly = True
         if port_open(config.rcl_port):
             try:
                 verify_rcl(config)
@@ -57,8 +62,14 @@ def wait_for_powerview(
         time.sleep(0.2)
 
     detail = f": {last_rcl_error}" if last_rcl_error is not None else ""
+    launcher_detail = (
+        " (the launcher exited successfully, but RCL never became ready)"
+        if launcher_exited_cleanly
+        else ""
+    )
     raise BridgeError(
-        f"PowerView did not become ready on RCL port {config.rcl_port}{detail}; "
+        f"PowerView did not become ready on RCL port {config.rcl_port}"
+        f"{launcher_detail}{detail}; "
         f"check RCL=NETTCP in {config.t32_config} and {log_path}"
     )
 

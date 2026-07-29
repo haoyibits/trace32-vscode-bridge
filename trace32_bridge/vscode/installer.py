@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +19,24 @@ TASK_ALIASES = {
     "T32: Load + Debug": "T32: Load ELF",
 }
 LEGACY_LAUNCH_NAMES = {"1. Flash + Debug", "2. Load + Debug"}
+DEVELOPMENT_PATHS = (
+    "test",
+    "tests",
+    ".git",
+    ".github",
+    "build",
+    "dist",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".tox",
+    ".nox",
+    ".venv",
+    "htmlcov",
+    ".coverage",
+)
+PRESERVED_GENERATED_DIRS = {".run"}
+RCL_IMPORT = "import lauterbach.trace32.rcl"
 
 
 def replace_tokens(value: Any, replacements: dict[str, Any]) -> Any:
@@ -132,7 +151,80 @@ def atomic_write_json(path: Path, document: dict[str, Any]) -> None:
         raise BridgeError(f"cannot update {path}: {error}") from error
 
 
+def _can_import_rcl(python: Path) -> bool:
+    result = subprocess.run(
+        [str(python), "-c", RCL_IMPORT],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def require_runtime_python(config: Config) -> Path:
+    root = config.toolkit_dir.resolve()
+    python = Path(sys.executable)
+    legacy_venv = (root / ".venv").resolve()
+    resolved_python = python.resolve()
+    if resolved_python == legacy_venv or legacy_venv in resolved_python.parents:
+        raise BridgeError(
+            "install-vscode is running from the legacy toolkit .venv; "
+            "run it with the Python where Lauterbach RCL is installed"
+        )
+    if not _can_import_rcl(python):
+        raise BridgeError(
+            f"Lauterbach RCL is not installed for {python}; install "
+            "'lauterbach-trace32-rcl>=1.1,<2' with this Python and retry "
+            "(see README)"
+        )
+    return python
+
+
+def _remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
+    else:
+        return
+    print(f"removed {path}")
+
+
+def clean_toolkit(config: Config) -> None:
+    root = config.toolkit_dir.resolve()
+    required = (root / "t32.py", root / "trace32.toml", root / "trace32_bridge")
+    if (
+        root == Path(root.anchor)
+        or root == Path.home()
+        or not required[0].is_file()
+        or not required[1].is_file()
+        or not required[2].is_dir()
+    ):
+        raise BridgeError(f"refusing to clean unexpected toolkit directory: {root}")
+
+    for name in DEVELOPMENT_PATHS:
+        _remove_path(root / name)
+    for path in root.glob("*.egg-info"):
+        _remove_path(path)
+
+    for directory, names, files in os.walk(root, topdown=True):
+        names[:] = [
+            name
+            for name in names
+            if name not in PRESERVED_GENERATED_DIRS
+        ]
+        current = Path(directory)
+        if "__pycache__" in names:
+            _remove_path(current / "__pycache__")
+            names.remove("__pycache__")
+        for filename in files:
+            if filename == ".DS_Store" or filename.endswith((".pyc", ".pyo")):
+                _remove_path(current / filename)
+
+
 def install(config: Config) -> None:
+    runtime_python = require_runtime_python(config)
     target_dir = config.project_dir / ".vscode"
     target_dir.mkdir(parents=True, exist_ok=True)
     toolkit_relative = os.path.relpath(
@@ -140,7 +232,7 @@ def install(config: Config) -> None:
     ).replace(os.sep, "/")
     replacements: dict[str, Any] = {
         "__TRACE32_TOOLKIT_REL__": toolkit_relative,
-        "__PYTHON_EXECUTABLE__": sys.executable,
+        "__PYTHON_EXECUTABLE__": str(runtime_python),
         "__T32_DAP_PORT__": config.dap_port,
         "__T32_RCL_PORT__": config.rcl_port,
     }
@@ -164,7 +256,9 @@ def install(config: Config) -> None:
         atomic_write_json(target_path, merged)
         print(f"installed/merged {target_path}")
 
+    clean_toolkit(config)
     print(
-        "\nDone. Flash/Load/RTT are visible tasks; "
-        "'TRACE32: Attach' starts the hidden adapter."
+        f"\nDone. VS Code uses {runtime_python}. Development files removed; "
+        "Flash/Load/RTT are visible tasks; 'TRACE32: Attach' starts the "
+        "hidden adapter."
     )

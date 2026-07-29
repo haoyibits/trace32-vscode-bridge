@@ -10,7 +10,8 @@ def connect_debugger(config: Config, *, timeout: float = 5.0):
     except ImportError as error:
         raise BridgeError(
             "lauterbach-trace32-rcl is not installed for this Python; "
-            "install the project with 'python -m pip install -e .'"
+            "install the project in a virtual environment with "
+            "'python -m pip install .'"
         ) from error
     try:
         return rcl.connect(
