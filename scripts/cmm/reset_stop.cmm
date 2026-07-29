@@ -1,7 +1,0 @@
-; Reset the configured target and leave it stopped.
-; The DAP adapter issues Continue afterwards so it can track breakpoint hits.
-
-Break
-SYStem.Mode Up
-
-ENDDO

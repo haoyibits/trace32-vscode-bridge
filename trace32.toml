@@ -1,0 +1,42 @@
+[project]
+root = ".."
+program = "my_app"
+elf = "build/my_app.elf"
+
+[target]
+cpu = "SR6P6"
+cores = "1."
+mem_access = "AXI"
+jtag_clock = "10MHz"
+dual_port = "ON"
+
+[rtos]
+# Leave these empty to disable RTOS awareness.
+config = "~~/demo/arm/kernel/freertos/freertos.t32"
+menu = "~~/demo/arm/kernel/freertos/freertos.men"
+show_tasks = true
+
+[flash]
+# The actual project owns this script. TRACE32's "~~/demo/..." paths and paths
+# relative to this toolkit are both supported. With the default project layout,
+# "../scripts/flash.cmm" points at <actual-project>/scripts/flash.cmm.
+script = "../scripts/flash.cmm"
+args = ["DUALPORT=1", "JTAG_CLOCK=10MHz"]
+
+[trace32]
+sys = ""
+host = ""
+executable = "t32marm-qt"
+binary = ""
+config = ""
+debug_adapter = ""
+rcl_port = 20000
+dap_port = 58870
+dap_backend_port = 58871
+dap_backend_timeout = 30
+operation_timeout = 600
+
+[rtt]
+symbol = "_SEGGER_RTT"
+control_block_address = ""
+poll_interval = 0.02

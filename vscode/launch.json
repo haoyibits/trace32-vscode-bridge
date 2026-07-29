@@ -3,7 +3,7 @@
     // standalone DAP server. The hidden preLaunchTask starts the adapter;
     // Flash, Load ELF and RTT remain independent visible tasks.
     // "debugServer" must match T32_DAP_PORT and "trace32Port" must match
-    // T32_RCL_PORT in the toolkit's config.env.
+    // trace32.rcl_port in the toolkit's trace32.toml.
     "version": "0.2.0",
     "configurations": [
         {

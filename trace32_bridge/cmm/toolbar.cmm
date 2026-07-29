@@ -1,0 +1,37 @@
+; ------------------------------------------------------------------------------
+; Two extra toolbar buttons, mirroring the VS Code tasks so the same flows are
+; reachable from PowerView itself. The stock TRACE32 menu and toolbar are left
+; untouched.
+; ------------------------------------------------------------------------------
+
+PRIVATE &root &python
+ENTRY &root &python
+&root=STRing.TRIM("&root")
+&python=STRing.TRIM("&python")
+
+IF "&root"==""
+(
+  PRINT %ERROR "trace32-vscode-bridge: toolbar.cmm needs the toolkit path"
+  ENDDO
+)
+
+IF "&python"==""
+(
+  PRINT %ERROR "trace32-vscode-bridge: toolbar.cmm needs the Python path"
+  ENDDO
+)
+
+MENU.ReProgram
+(
+  ADD
+  TOOLBAR
+  (
+    SEPARATOR
+    ; The trailing '&' makes the host process asynchronous. PowerView must
+    ; return to its event loop before Python connects back through RCL.
+    TOOLITEM "Flash"    ":FLASH" "OS.Command ""&python"" ""&root/t32.py"" flash &"
+    TOOLITEM "Load ELF" ":LOAD"  "OS.Command ""&python"" ""&root/t32.py"" load &"
+  )
+)
+
+ENDDO

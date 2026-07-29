@@ -1,0 +1,2 @@
+"""VS Code template installation."""
+

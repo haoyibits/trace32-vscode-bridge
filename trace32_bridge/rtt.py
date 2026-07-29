@@ -1,21 +1,17 @@
-#!/usr/bin/env python3
 """Interactive SEGGER RTT terminal through a running TRACE32 PowerView session.
 
 TRACE32 owns the debug probe. This process connects to TRACE32's Remote API
 (RCL), drains RTT up-channel 0 to stdout, and forwards stdin to down-channel 0,
 so it carries both printf output and an interactive CLI.
 
-All defaults come from trace32-vscode-bridge/config.env; the options below only exist to
-override them for a one-off run.
-
-Requires: python3 -m pip install lauterbach-trace32-rcl
+All defaults come from trace32.toml. Command-line options only override them
+for a one-off run.
 """
 
 import argparse
 import contextlib
 import os
 import select
-import shlex
 import struct
 import sys
 import termios
@@ -23,12 +19,8 @@ import time
 
 import lauterbach.trace32.rcl as rcl
 
-
-# scripts/host/rtt_viewer.py -> the toolkit root is three levels up.
-TOOLKIT_DIR = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
-CONFIG_FILE = os.path.join(TOOLKIT_DIR, "config.env")
+from .config import Config
+from .errors import BridgeError
 
 ID_STRING = b"SEGGER RTT"
 
@@ -39,27 +31,6 @@ DESC_BUFFER = 0x04
 DESC_SIZE = 0x08
 DESC_WR_OFF = 0x0C
 DESC_RD_OFF = 0x10
-
-
-def load_config(path):
-    """Read the KEY="value" pairs of config.env."""
-    config = {}
-    if not os.path.isfile(path):
-        return config
-    with open(path, encoding="utf-8") as handle:
-        for raw in handle:
-            line = raw.strip()
-            if not line or line.startswith("#"):
-                continue
-            key, separator, value = line.partition("=")
-            if not separator:
-                continue
-            try:
-                parts = shlex.split(value)
-            except ValueError:
-                continue
-            config[key.strip()] = " ".join(parts)
-    return config
 
 
 class RttChannel:
@@ -158,7 +129,7 @@ class RttChannel:
 
 
 def resolve_control_block(debugger, program, symbol):
-    """Resolve the RTT control block from the symbols loaded by target.cmm."""
+    """Resolve the RTT control block from the symbols loaded by target.py."""
     name = f"\\\\{program}\\Global\\{symbol}"
     return debugger.symbol.query_by_name(name=name).address.value
 
@@ -191,26 +162,25 @@ def read_terminal_input():
     return data.replace(b"\x7f", b"\x08")
 
 
-def parse_args(config):
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+def add_arguments(parser: argparse.ArgumentParser, config: Config) -> None:
     parser.add_argument(
         "--program",
-        default=config.get("PROGRAM_NAME", ""),
-        help="TRACE32 symbol program name (default: PROGRAM_NAME from config.env)",
+        default=config.program,
+        help="TRACE32 symbol program name (default: project.program)",
     )
     parser.add_argument(
         "--symbol",
-        default=config.get("RTT_SYMBOL", "_SEGGER_RTT"),
+        default=config.rtt_symbol,
         help="RTT control-block symbol (default: _SEGGER_RTT)",
     )
     parser.add_argument(
         "--cb",
         type=lambda value: int(value, 0),
-        default=int(config["RTT_CB_ADDRESS"], 0) if config.get("RTT_CB_ADDRESS") else None,
+        default=config.rtt_control_block_address,
         help="control-block address; bypasses symbol lookup, e.g. 0x20000000",
     )
     parser.add_argument("--node", default="localhost")
-    parser.add_argument("--port", default=int(config.get("T32_RCL_PORT", 20000)), type=int)
+    parser.add_argument("--port", default=config.rcl_port, type=int)
     parser.add_argument(
         "--protocol",
         default="TCP",
@@ -219,7 +189,7 @@ def parse_args(config):
     )
     parser.add_argument(
         "--poll",
-        default=0.02,
+        default=config.rtt_poll_interval,
         type=float,
         help="poll period in seconds (default: 0.02)",
     )
@@ -233,13 +203,9 @@ def parse_args(config):
         action="store_true",
         help="do not forward terminal input to the RTT down-channel",
     )
-    return parser.parse_args()
 
 
-def main():
-    config = load_config(CONFIG_FILE)
-    args = parse_args(config)
-
+def run(config: Config, args: argparse.Namespace) -> None:
     try:
         debugger = rcl.connect(
             node=args.node,
@@ -250,23 +216,23 @@ def main():
         )
         debugger.print(f"RTT terminal connected (pid {os.getpid()})")
     except Exception as error:
-        sys.exit(
+        raise BridgeError(
             f"cannot connect to TRACE32 at {args.node}:{args.port} ({error})\n"
             "Check the RCL=NETTCP / PORT= section of your config.t32."
-        )
+        ) from error
 
     if args.cb is not None:
         control_block = args.cb
     elif not args.program:
-        sys.exit("PROGRAM_NAME is empty in config.env and no --cb was given")
+        raise BridgeError("project.program is empty and no --cb was given")
     else:
         try:
             control_block = resolve_control_block(debugger, args.program, args.symbol)
         except Exception as error:
-            sys.exit(
+            raise BridgeError(
                 f"cannot resolve {args.symbol} in '{args.program}' ({error})\n"
                 "Run the 'T32: Load ELF' task first, or pass --cb 0x<address>."
-            )
+            ) from error
 
     channel = RttChannel(debugger, control_block)
     print(
@@ -326,7 +292,3 @@ def main():
                 time.sleep(0.2)
 
     print("\nTRACE32 RTT terminal stopped", file=sys.stderr)
-
-
-if __name__ == "__main__":
-    main()

@@ -1,5 +1,5 @@
 {
-    // install.sh replaces __TRACE32_TOOLKIT_REL__ with this toolkit's actual
+    // The Python installer replaces __TRACE32_TOOLKIT_REL__ with this toolkit's actual
     // path relative to the workspace.
     //
     // Flash, Load and RTT are user-facing. The adapter task is hidden and
@@ -10,9 +10,10 @@
         {
             "label": "T32: Flash",
             "detail": "Erase + program the existing ELF, load symbols and run; no build",
-            "type": "shell",
-            "command": "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/scripts/t32.sh",
+            "type": "process",
+            "command": "__PYTHON_EXECUTABLE__",
             "args": [
+                "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/t32.py",
                 "flash"
             ],
             "presentation": {
@@ -26,9 +27,10 @@
         {
             "label": "T32: Load ELF",
             "detail": "No build/flash: attach PowerView, load symbols from the existing ELF and run",
-            "type": "shell",
-            "command": "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/scripts/t32.sh",
+            "type": "process",
+            "command": "__PYTHON_EXECUTABLE__",
             "args": [
+                "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/t32.py",
                 "load"
             ],
             "presentation": {
@@ -43,10 +45,11 @@
             "label": "T32: Start Debug Adapter",
             "detail": "Started automatically by TRACE32: Attach",
             "hide": true,
-            "type": "shell",
+            "type": "process",
             "isBackground": true,
-            "command": "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/scripts/t32.sh",
+            "command": "__PYTHON_EXECUTABLE__",
             "args": [
+                "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/t32.py",
                 "adapter"
             ],
             "presentation": {
@@ -76,9 +79,10 @@
         {
             "label": "T32: RTT Viewer",
             "detail": "Interactive SEGGER RTT terminal over the running PowerView session",
-            "type": "shell",
-            "command": "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/scripts/t32.sh",
+            "type": "process",
+            "command": "__PYTHON_EXECUTABLE__",
             "args": [
+                "${workspaceFolder}/__TRACE32_TOOLKIT_REL__/t32.py",
                 "rtt"
             ],
             "presentation": {

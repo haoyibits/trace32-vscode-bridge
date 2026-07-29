@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trace32-vscode-bridge"
+version = "0.1.0"
+description = "TRACE32 PowerView integration for VS Code"
+requires-python = ">=3.11"
+dependencies = [
+    "lauterbach-trace32-rcl>=1.1,<2",
+]
+
+[project.scripts]
+t32-bridge = "trace32_bridge.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["trace32_bridge*"]
+
+[tool.setuptools.package-data]
+trace32_bridge = ["cmm/*.cmm"]
