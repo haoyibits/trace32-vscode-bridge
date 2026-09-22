@@ -118,20 +118,6 @@ class InstallerTests(unittest.TestCase):
                 ):
                     require_runtime_python(config)
 
-    def test_runtime_python_rejects_legacy_toolkit_venv(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            toolkit = Path(directory) / "toolkit"
-            python = toolkit / ".venv" / "bin" / "python"
-            config = SimpleNamespace(toolkit_dir=toolkit)
-
-            with mock.patch(
-                "trace32_bridge.vscode.installer.sys.executable", str(python)
-            ):
-                with self.assertRaisesRegex(
-                    BridgeError, "legacy toolkit .venv"
-                ):
-                    require_runtime_python(config)
-
     def test_clean_toolkit_removes_only_development_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             toolkit = Path(directory) / "toolkit"
@@ -166,7 +152,7 @@ class InstallerTests(unittest.TestCase):
             self.assertFalse(
                 (toolkit / "trace32_bridge" / "__pycache__").exists()
             )
-            self.assertFalse((toolkit / ".venv").exists())
+            self.assertTrue((toolkit / ".venv" / "keep.pyc").exists())
             self.assertTrue((toolkit / ".run" / "powerview.log").exists())
             self.assertTrue((toolkit / "README.md").exists())
 

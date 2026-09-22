@@ -45,8 +45,8 @@ python3.13 -m pip install --user --break-system-packages \
 into Homebrew's Python installation.
 
 `install-vscode` checks RCL in the current Python and pins every TRACE32 task
-to that interpreter. It does not create a `.venv` or modify the Python
-environment automatically.
+to that interpreter. It supports a toolkit-local `.venv`; after installation,
+VS Code tasks run without manually activating that environment.
 
 Bash and Node.js are no longer required.
 
@@ -185,9 +185,9 @@ are stored in the consuming project's `.vscode/` directory with names such as
 
 Cleanup is confined to `trace32-vscode-bridge/`: it removes `test/`, `tests/`,
 the deployed copy's own `.git/` and `.github/`, `build/`, `dist/`,
-`*.egg-info`, Python caches, and a legacy tool-local `.venv/`. It preserves the
-consuming project's `.git/` and the toolkit's `.run/`, configuration,
-documentation, and runtime source.
+`*.egg-info` and Python caches. It preserves the consuming project's `.git/`,
+the toolkit's `.venv/` and `.run/`, configuration, documentation, and runtime
+source.
 
 Installing RCL requires access to a Python package index. On another computer,
 install RCL into that computer's Python before running `install-vscode`.

@@ -31,11 +31,10 @@ DEVELOPMENT_PATHS = (
     ".ruff_cache",
     ".tox",
     ".nox",
-    ".venv",
     "htmlcov",
     ".coverage",
 )
-PRESERVED_GENERATED_DIRS = {".run"}
+PRESERVED_GENERATED_DIRS = {".run", ".venv"}
 RCL_IMPORT = "import lauterbach.trace32.rcl"
 
 
@@ -163,15 +162,7 @@ def _can_import_rcl(python: Path) -> bool:
 
 
 def require_runtime_python(config: Config) -> Path:
-    root = config.toolkit_dir.resolve()
     python = Path(sys.executable)
-    legacy_venv = (root / ".venv").resolve()
-    resolved_python = python.resolve()
-    if resolved_python == legacy_venv or legacy_venv in resolved_python.parents:
-        raise BridgeError(
-            "install-vscode is running from the legacy toolkit .venv; "
-            "run it with the Python where Lauterbach RCL is installed"
-        )
     if not _can_import_rcl(python):
         raise BridgeError(
             f"Lauterbach RCL is not installed for {python}; install "

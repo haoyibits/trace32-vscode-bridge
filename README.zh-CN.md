@@ -43,7 +43,8 @@ python3.13 -m pip install --user --break-system-packages \
 `--user` 会把包放进当前用户目录，不会写入 Homebrew 的 Python 安装目录。
 
 `install-vscode` 会检查当前 Python 中的 RCL，并让全部 TRACE32 任务固定使用
-这个 Python；它不会创建 `.venv` 或自动修改 Python 环境。
+这个 Python。它支持使用工具目录的 `.venv`，之后直接在 VS Code 中运行任务，
+无需手动激活虚拟环境。
 
 不再需要 Bash 或 Node.js。
 
@@ -178,8 +179,8 @@ Homebrew Python 如果拒绝第一条安装命令，按“要求”一节改用�
 
 清理仅限 `trace32-vscode-bridge/`：包括 `test/`、`tests/`、工具副本自己的
 `.git/`、`.github/`、`build/`、`dist/`、`*.egg-info` 和 Python 缓存。
-旧版本遗留的工具内 `.venv/` 也会删除。外层实际项目的 `.git/`、工具的
-`.run/`、配置、文档和运行源码不会被删除。
+外层实际项目的 `.git/`、工具的 `.venv/`、`.run/`、配置、文档和运行源码不会
+被删除。
 
 安装 RCL 时需要能够访问 Python 包源。复制到另一台电脑后，需要先在那台电脑
 的 Python 中安装 RCL，再执行 `install-vscode`。
@@ -357,3 +358,9 @@ python3.13 trace32-vscode-bridge/t32.py install-vscode
 
 DAP 代理会屏蔽已知会导致部分 `t32debugadapter` 版本退出的 Locals 请求。
 Watch、寄存器、调用栈、断点和单步仍正常转发。
+
+
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install .
+.venv/bin/python t32.py install-vscode
