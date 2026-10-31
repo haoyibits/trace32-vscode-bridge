@@ -103,7 +103,7 @@ When using a different port, set the same value in
 
 ### 2. Add the tool and Flash script
 
-Copy this directory into the consuming project and place that project's SR6P6
+Copy this directory into the consuming project and place that project's
 Flash script beside `toolbar.cmm`:
 
 ```text
@@ -134,7 +134,7 @@ program = "my_app"
 elf = "build/my_app.elf"
 
 [target]
-cpu = "SR6P6"
+cpu = "YOUR_CHIP"
 cores = "1."
 mem_access = "AXI"
 jtag_clock = "10MHz"
