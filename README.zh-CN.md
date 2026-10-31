@@ -100,7 +100,7 @@ PORT=20000
 
 ### 2. 放入工具和 Flash 脚本
 
-把本目录复制到实际项目中，并把该项目自己的 SR6P6 Flash 脚本放在
+把本目录复制到实际项目中，并把该项目自己的 Flash 脚本放在
 `toolbar.cmm` 旁边：
 
 ```text
@@ -130,7 +130,7 @@ program = "my_app"
 elf = "build/my_app.elf"
 
 [target]
-cpu = "SR6P6"
+cpu = "YOUR_CHIP"
 cores = "1."
 mem_access = "AXI"
 jtag_clock = "10MHz"
